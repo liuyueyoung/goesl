@@ -7,9 +7,11 @@
 package examples
 
 import (
-	. "github.com/0x19/goesl"
 	"runtime"
 	"strings"
+
+	. "github.com/xhymn/goesl"
+	"google.golang.org/appengine/log"
 )
 
 var (
@@ -20,7 +22,7 @@ func main() {
 
 	defer func() {
 		if r := recover(); r != nil {
-			Error("Recovered in: ", r)
+			log.Errorf("Recovered in: ", r)
 		}
 	}()
 
@@ -28,7 +30,7 @@ func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	if s, err := NewOutboundServer(":8084"); err != nil {
-		Error("Got error while starting Freeswitch outbound server: %s", err)
+		log.Errorf("Got error while starting Freeswitch outbound server: %s", err)
 	} else {
 		go handle(s)
 		s.Start()
@@ -44,49 +46,49 @@ func handle(s *OutboundServer) {
 		select {
 
 		case conn := <-s.Conns:
-			Notice("New incomming connection: %v", conn)
+			log.Noticef("New incomming connection: %v", conn)
 
 			if err := conn.Connect(); err != nil {
-				Error("Got error while accepting connection: %s", err)
+				log.Errorf("Got error while accepting connection: %s", err)
 				break
 			}
 
 			answer, err := conn.ExecuteAnswer("", false)
 
 			if err != nil {
-				Error("Got error while executing answer: %s", err)
+				log.Errorf("Got error while executing answer: %s", err)
 				break
 			}
 
-			Debug("Answer Message: %s", answer)
-			Debug("Caller UUID: %s", answer.GetHeader("Caller-Unique-Id"))
+			log.Debugf("Answer Message: %s", answer)
+			log.Debugf("Caller UUID: %s", answer.GetHeader("Caller-Unique-Id"))
 
 			cUUID := answer.GetCallUUID()
 
 			if te, err := conn.ExecuteSet("tts_engine", "flite", false); err != nil {
-				Error("Got error while attempting to set tts_engine: %s", err)
+				log.Errorf("Got error while attempting to set tts_engine: %s", err)
 			} else {
-				Debug("TTS Engine Msg: %s", te)
+				log.Debugf("TTS Engine Msg: %s", te)
 			}
 
 			if tv, err := conn.ExecuteSet("tts_voice", "slt", false); err != nil {
-				Error("Got error while attempting to set tts_voice: %s", err)
+				log.Errorf("Got error while attempting to set tts_voice: %s", err)
 			} else {
-				Debug("TTS Voice Msg: %s", tv)
+				log.Debugf("TTS Voice Msg: %s", tv)
 			}
 
 			if sm, err := conn.Execute("speak", goeslMessage, true); err != nil {
-				Error("Got error while executing speak: %s", err)
+				log.Errorf("Got error while executing speak: %s", err)
 				break
 			} else {
-				Debug("Speak Message: %s", sm)
+				log.Debugf("Speak Message: %s", sm)
 			}
 
 			if hm, err := conn.ExecuteHangup(cUUID, "", false); err != nil {
-				Error("Got error while executing hangup: %s", err)
+				log.Errorf("Got error while executing hangup: %s", err)
 				break
 			} else {
-				Debug("Hangup Message: %s", hm)
+				log.Debugf("Hangup Message: %s", hm)
 			}
 
 			go func() {
@@ -96,13 +98,13 @@ func handle(s *OutboundServer) {
 					if err != nil {
 
 						// If it contains EOF, we really dont care...
-						if !strings.Contains(err.Error(), "EOF") {
-							Error("Error while reading Freeswitch message: %s", err)
+						if !strings.Contains(err.log.Errorf(), "EOF") {
+							log.Errorf("Error while reading Freeswitch message: %s", err)
 						}
 						break
 					}
 
-					Debug("%s", msg)
+					log.Debugf("%s", msg)
 				}
 			}()
 

@@ -9,9 +9,11 @@ package examples
 import (
 	"flag"
 	"fmt"
-	. "github.com/0x19/goesl"
 	"runtime"
 	"strings"
+
+	. "github.com/xhymn/goesl"
+	"google.golang.org/appengine/log"
 )
 
 var (
@@ -30,11 +32,11 @@ func main() {
 	client, err := NewClient(*fshost, *fsport, *password, *timeout)
 
 	if err != nil {
-		Error("Error while creating new client: %s", err)
+		log.Errorf("Error while creating new client: %s", err)
 		return
 	}
 
-	Debug("Yuhu! New client: %q", client)
+	log.Debugf("Yuhu! New client: %q", client)
 
 	// Apparently all is good... Let us now handle connection :)
 	// We don't want this to be inside of new connection as who knows where it my lead us.
@@ -51,12 +53,12 @@ func main() {
 		if err != nil {
 
 			// If it contains EOF, we really dont care...
-			if !strings.Contains(err.Error(), "EOF") && err.Error() != "unexpected end of JSON input" {
-				Error("Error while reading Freeswitch message: %s", err)
+			if !strings.Contains(err.log.Errorf(), "EOF") && err.log.Errorf() != "unexpected end of JSON input" {
+				log.Errorf("Error while reading Freeswitch message: %s", err)
 			}
 			break
 		}
 
-		Debug("%s", msg)
+		log.Debugf("%s", msg)
 	}
 }

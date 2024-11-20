@@ -21,19 +21,19 @@ type OutboundServer struct {
 	Addr  string `json:"address"`
 	Proto string
 
-	Conns chan SocketConnection
+	Conns chan *SocketConnection
 }
 
 // Start - Will start new outbound server
 func (s *OutboundServer) Start() error {
-	Notice("Starting Freeswitch Outbound Server @ (address: %s) ...", s.Addr)
+	log.Noticef("Starting Freeswitch Outbound Server @ (address: %s) ...", s.Addr)
 
 	var err error
 
 	s.Listener, err = net.Listen(s.Proto, s.Addr)
 
 	if err != nil {
-		Error(ECouldNotStartListener, err)
+		log.Errorf(ECouldNotStartListener, err)
 		return err
 	}
 
@@ -41,23 +41,23 @@ func (s *OutboundServer) Start() error {
 
 	go func() {
 		for {
-			Warning("Waiting for incoming connections ...")
+			log.Warningf("Waiting for incoming connections ...")
 
 			c, err := s.Accept()
 
 			if err != nil {
-				Error(EListenerConnection, err)
+				log.Errorf(EListenerConnection, err)
 				quit <- true
 				break
 			}
 
-			conn := SocketConnection{
+			conn := &SocketConnection{
 				Conn: c,
 				err:  make(chan error),
 				m:    make(chan *Message),
 			}
 
-			Notice("Got new connection from: %s", conn.OriginatorAddr())
+			log.Noticef("Got new connection from: %s", conn.OriginatorAddr())
 
 			go conn.Handle()
 
@@ -75,7 +75,7 @@ func (s *OutboundServer) Start() error {
 
 // Stop - Will close server connection once SIGTERM/Interrupt is received
 func (s *OutboundServer) Stop() {
-	Warning("Stopping Outbound Server ...")
+	log.Warningf("Stopping Outbound Server ...")
 	s.Close()
 }
 
@@ -92,7 +92,7 @@ func NewOutboundServer(addr string) (*OutboundServer, error) {
 	server := OutboundServer{
 		Addr:  addr,
 		Proto: "tcp",
-		Conns: make(chan SocketConnection),
+		Conns: make(chan *SocketConnection, 4),
 	}
 
 	sig := make(chan os.Signal, 1)

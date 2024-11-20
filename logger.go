@@ -19,28 +19,12 @@ var (
 	// which is dependent on the log level. Many fields have a custom output
 	// formatting too, eg. the time returns the hour down to the milli second.
 	format = logging.MustStringFormatter(
-		"%{color}%{time:15:04:05.000} %{shortfunc} ▶ %{level:.8s}%{color:reset} %{message}",
+		"%{color}%{time:15:04:05.000} %{shortfile} ▶ %{level:.8s}%{color:reset} %{message}",
 	)
 )
 
-func Debug(message string, args ...interface{}) {
-	log.Debugf(message, args...)
-}
-
-func Error(message string, args ...interface{}) {
-	log.Errorf(message, args...)
-}
-
-func Notice(message string, args ...interface{}) {
-	log.Noticef(message, args...)
-}
-
-func Info(message string, args ...interface{}) {
-	log.Infof(message, args...)
-}
-
-func Warning(message string, args ...interface{}) {
-	log.Warningf(message, args...)
+func SetLogLevel(l logging.Level) {
+	logging.SetLevel(l, "goesl")
 }
 
 func init() {

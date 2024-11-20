@@ -34,9 +34,9 @@ func (m *Message) String() string {
 	return fmt.Sprintf("%v body=%s", m.Headers, m.Body)
 }
 
-// GetCallUUID - Will return Caller-Unique-ID
+// GetCallUUID - Will return Caller-Unique-Id
 func (m *Message) GetCallUUID() string {
-	return m.GetHeader("Caller-Unique-ID")
+	return m.GetHeader("Caller-Unique-Id")
 }
 
 // GetHeader - Will return message header value, or "" if the key is not set.
@@ -51,12 +51,12 @@ func (m *Message) Parse() error {
 	cmr, err := m.tr.ReadMIMEHeader()
 
 	if err != nil && err.Error() != "EOF" {
-		Error(ECouldNotReadMIMEHeaders, err)
+		log.Errorf(ECouldNotReadMIMEHeaders, err)
 		return err
 	}
 
 	if cmr.Get("Content-Type") == "" {
-		Debug("Not accepting message because of empty content type. Just whatever with it ...")
+		log.Debugf("Not accepting message because of empty content type. Just whatever with it ...")
 		return fmt.Errorf("Parse EOF")
 	}
 
@@ -66,21 +66,21 @@ func (m *Message) Parse() error {
 		l, err := strconv.Atoi(lv)
 
 		if err != nil {
-			Error(EInvalidContentLength, err)
+			log.Errorf(EInvalidContentLength, err)
 			return err
 		}
 
 		m.Body = make([]byte, l)
 
 		if _, err := io.ReadFull(m.r, m.Body); err != nil {
-			Error(ECouldNotReadyBody, err)
+			log.Errorf(ECouldNotReadyBody, err)
 			return err
 		}
 	}
 
 	msgType := cmr.Get("Content-Type")
 
-	Debug("Got message content (type: %s). Searching if we can handle it ...", msgType)
+	log.Debugf("Got message content (type: %s). Searching if we can handle it ...", msgType)
 
 	if !StringInSlice(msgType, AvailableMessageTypes) {
 		return fmt.Errorf(EUnsupportedMessageType, msgType, AvailableMessageTypes)
@@ -97,7 +97,7 @@ func (m *Message) Parse() error {
 				m.Headers[k], err = url.QueryUnescape(v[0])
 
 				if err != nil {
-					Error(ECouldNotDecode, err)
+					log.Errorf(ECouldNotDecode, err)
 					continue
 				}
 			}
@@ -107,7 +107,7 @@ func (m *Message) Parse() error {
 	switch msgType {
 	case "text/disconnect-notice":
 		for k, v := range cmr {
-			Debug("Message (header: %s) -> (value: %v)", k, v)
+			log.Debugf("Message (header: %s) -> (value: %v)", k, v)
 		}
 	case "command/reply":
 		reply := cmr.Get("Reply-Text")
@@ -136,7 +136,7 @@ func (m *Message) Parse() error {
 				m.Headers[k] = v.(string)
 			default:
 				//delete(m.Headers, k)
-				Warning("Removed non-string property (%s)", k)
+				log.Warningf("Removed non-string property (%s)", k)
 			}
 		}
 
@@ -162,14 +162,14 @@ func (m *Message) Parse() error {
 			length, err := strconv.Atoi(vl)
 
 			if err != nil {
-				Error(EInvalidContentLength, err)
+				log.Errorf(EInvalidContentLength, err)
 				return err
 			}
 
 			m.Body = make([]byte, length)
 
 			if _, err = io.ReadFull(r, m.Body); err != nil {
-				Error(ECouldNotReadyBody, err)
+				log.Errorf(ECouldNotReadyBody, err)
 				return err
 			}
 		}

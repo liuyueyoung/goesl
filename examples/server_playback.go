@@ -8,10 +8,12 @@ package examples
 
 import (
 	"fmt"
-	. "github.com/0x19/goesl"
 	"os"
 	"runtime"
 	"strings"
+
+	. "github.com/xhymn/goesl"
+	"google.golang.org/appengine/log"
 )
 
 var welcomeFile = "%s/media/welcome.wav"
@@ -20,7 +22,7 @@ func main() {
 
 	defer func() {
 		if r := recover(); r != nil {
-			Error("Recovered in f", r)
+			log.Errorf("Recovered in f", r)
 		}
 	}()
 
@@ -30,14 +32,14 @@ func main() {
 	wd, err := os.Getwd()
 
 	if err != nil {
-		Error("Error while attempt to get WD: %s", wd)
+		log.Errorf("Error while attempt to get WD: %s", wd)
 		os.Exit(1)
 	}
 
 	welcomeFile = fmt.Sprintf(welcomeFile, wd)
 
 	if s, err := NewOutboundServer(":8084"); err != nil {
-		Error("Got error while starting Freeswitch outbound server: %s", err)
+		log.Errorf("Got error while starting Freeswitch outbound server: %s", err)
 	} else {
 		go handle(s)
 		s.Start()
@@ -53,37 +55,37 @@ func handle(s *OutboundServer) {
 		select {
 
 		case conn := <-s.Conns:
-			Notice("New incomming connection: %v", conn)
+			log.Noticef("New incomming connection: %v", conn)
 
 			if err := conn.Connect(); err != nil {
-				Error("Got error while accepting connection: %s", err)
+				log.Errorf("Got error while accepting connection: %s", err)
 				break
 			}
 
 			answer, err := conn.ExecuteAnswer("", false)
 
 			if err != nil {
-				Error("Got error while executing answer: %s", err)
+				log.Errorf("Got error while executing answer: %s", err)
 				break
 			}
 
-			Debug("Answer Message: %s", answer)
-			Debug("Caller UUID: %s", answer.GetHeader("Caller-Unique-Id"))
+			log.Debugf("Answer Message: %s", answer)
+			log.Debugf("Caller UUID: %s", answer.GetHeader("Caller-Unique-Id"))
 
 			cUUID := answer.GetCallUUID()
 
 			if sm, err := conn.Execute("playback", welcomeFile, true); err != nil {
-				Error("Got error while executing playback: %s", err)
+				log.Errorf("Got error while executing playback: %s", err)
 				break
 			} else {
-				Debug("Playback Message: %s", sm)
+				log.Debugf("Playback Message: %s", sm)
 			}
 
 			if hm, err := conn.ExecuteHangup(cUUID, "", false); err != nil {
-				Error("Got error while executing hangup: %s", err)
+				log.Errorf("Got error while executing hangup: %s", err)
 				break
 			} else {
-				Debug("Hangup Message: %s", hm)
+				log.Debugf("Hangup Message: %s", hm)
 			}
 
 			go func() {
@@ -93,13 +95,13 @@ func handle(s *OutboundServer) {
 					if err != nil {
 
 						// If it contains EOF, we really dont care...
-						if !strings.Contains(err.Error(), "EOF") {
-							Error("Error while reading Freeswitch message: %s", err)
+						if !strings.Contains(err.log.Errorf(), "EOF") {
+							log.Errorf("Error while reading Freeswitch message: %s", err)
 						}
 						break
 					}
 
-					Debug("%s", msg)
+					log.Debugf("%s", msg)
 				}
 			}()
 
