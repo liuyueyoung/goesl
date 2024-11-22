@@ -226,6 +226,7 @@ func (c *SocketConnection) Close() error {
 	if err := c.Conn.Close(); err != nil {
 		return err
 	}
+	log.Infof("Current conn has closed: remote addr is %s", c.Conn.RemoteAddr().String())
 
 	return nil
 }

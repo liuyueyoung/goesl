@@ -23,7 +23,8 @@ import (
 // and dumping its contents. In addition to that it's here to make sure received message is in fact message we wish/can support
 type Message struct {
 	Headers map[string]string
-	Body    []byte
+	Body    map[string]string
+	body    []byte
 
 	r  *bufio.Reader
 	tr *textproto.Reader
@@ -31,12 +32,20 @@ type Message struct {
 
 // String - Will return message representation as string
 func (m *Message) String() string {
-	return fmt.Sprintf("%v body=%s", m.Headers, m.Body)
+	return fmt.Sprintf("%v body=%s", m.Headers, m.body)
 }
 
 // GetCallUUID - Will return Caller-Unique-Id
 func (m *Message) GetCallUUID() string {
 	return m.GetHeader("Caller-Unique-Id")
+}
+
+func (m *Message) GetBody(k string) string {
+	return m.Body[k]
+}
+
+func (m *Message) GetBodyBytes() []byte {
+	return m.body
 }
 
 // GetHeader - Will return message header value, or "" if the key is not set.
@@ -70,9 +79,9 @@ func (m *Message) Parse() error {
 			return err
 		}
 
-		m.Body = make([]byte, l)
+		m.body = make([]byte, l)
 
-		if _, err := io.ReadFull(m.r, m.Body); err != nil {
+		if _, err := io.ReadFull(m.r, m.body); err != nil {
 			log.Errorf(ECouldNotReadyBody, err)
 			return err
 		}
@@ -116,8 +125,8 @@ func (m *Message) Parse() error {
 			return fmt.Errorf(EUnsuccessfulReply, reply[5:])
 		}
 	case "api/response":
-		if strings.Contains(string(m.Body), "-ERR") {
-			return fmt.Errorf(EUnsuccessfulReply, string(m.Body)[5:])
+		if strings.Contains(string(m.body), "-ERR") {
+			return fmt.Errorf(EUnsuccessfulReply, string(m.body)[5:])
 		}
 	case "text/event-json":
 		// OK, what is missing here is a way to interpret other JSON types - it expects string only (understandably
@@ -125,7 +134,7 @@ func (m *Message) Parse() error {
 		// i.e. Event CHANNEL_EXECUTE_COMPLETE - "variable_DP_MATCH":["a=rtpmap:101 telephone-event/8000","101"]
 		var decoded map[string]interface{}
 
-		if err := json.Unmarshal(m.Body, &decoded); err != nil {
+		if err := json.Unmarshal(m.body, &decoded); err != nil {
 			return err
 		}
 
@@ -141,14 +150,14 @@ func (m *Message) Parse() error {
 		}
 
 		if v, _ := m.Headers["_body"]; v != "" {
-			m.Body = []byte(v)
+			m.body = []byte(v)
 			delete(m.Headers, "_body")
 		} else {
-			m.Body = []byte("")
+			m.body = []byte("")
 		}
 
 	case "text/event-plain":
-		r := bufio.NewReader(bytes.NewReader(m.Body))
+		r := bufio.NewReader(bytes.NewReader(m.body))
 
 		tr := textproto.NewReader(r)
 
@@ -166,11 +175,31 @@ func (m *Message) Parse() error {
 				return err
 			}
 
-			m.Body = make([]byte, length)
+			m.body = make([]byte, length)
 
-			if _, err = io.ReadFull(r, m.Body); err != nil {
+			if _, err = io.ReadFull(r, m.body); err != nil {
 				log.Errorf(ECouldNotReadyBody, err)
 				return err
+			}
+		}
+	}
+
+	b := string(m.body)
+	lines := strings.Split(b, "\n")
+	for _, line := range lines {
+		if len(line) > 0 {
+			parts := strings.SplitN(line, ":", 2)
+			if len(parts) == 2 {
+				if strings.Contains(parts[1], "%") {
+					v, err := url.QueryUnescape(parts[1])
+					if err != nil {
+						log.Errorf(ECouldNotDecode, err)
+						continue
+					}
+
+					parts[1] = v
+				}
+				m.Body[parts[0]] = strings.TrimSpace(parts[1])
 			}
 		}
 	}
@@ -192,7 +221,7 @@ func (m *Message) Dump() (resp string) {
 		resp += fmt.Sprintf("%s: %s\r\n", k, m.Headers[k])
 	}
 
-	resp += fmt.Sprintf("BODY: %v\r\n", string(m.Body))
+	resp += fmt.Sprintf("BODY: %v\r\n", string(m.body))
 
 	return
 }
@@ -205,6 +234,7 @@ func newMessage(r *bufio.Reader, autoParse bool) (*Message, error) {
 		r:       r,
 		tr:      textproto.NewReader(r),
 		Headers: make(map[string]string),
+		Body:    make(map[string]string),
 	}
 
 	if autoParse {

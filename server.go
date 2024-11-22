@@ -41,7 +41,7 @@ func (s *OutboundServer) Start() error {
 
 	go func() {
 		for {
-			log.Warningf("Waiting for incoming connections ...")
+			log.Infof("Waiting for incoming connections ...")
 
 			c, err := s.Accept()
 
@@ -57,7 +57,7 @@ func (s *OutboundServer) Start() error {
 				m:    make(chan *Message),
 			}
 
-			log.Noticef("Got new connection from: %s", conn.OriginatorAddr())
+			log.Infof("Got new connection from: %s", conn.OriginatorAddr())
 
 			go conn.Handle()
 
@@ -75,7 +75,7 @@ func (s *OutboundServer) Start() error {
 
 // Stop - Will close server connection once SIGTERM/Interrupt is received
 func (s *OutboundServer) Stop() {
-	log.Warningf("Stopping Outbound Server ...")
+	log.Infof("Stopping Outbound Server ...")
 	s.Close()
 }
 
